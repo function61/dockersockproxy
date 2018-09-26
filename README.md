@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/function61/dockersockproxy.svg?branch=master)](https://travis-ci.org/function61/dockersockproxy)
+[![Download](https://img.shields.io/docker/pulls/fn61/dockersockproxy.svg)](https://hub.docker.com/r/fn61/dockersockproxy/)
+
 What?
 -----
 
