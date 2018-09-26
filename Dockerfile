@@ -1,5 +1,5 @@
 FROM scratch
 
-CMD /dockersockproxy
+CMD ["/dockersockproxy"]
 
 ADD dockersockproxy /dockersockproxy
