@@ -2,4 +2,4 @@ FROM scratch
 
 CMD /dockersockproxy
 
-ADD app /dockersockproxy
+ADD dockersockproxy /dockersockproxy
