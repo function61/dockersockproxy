@@ -12,8 +12,33 @@ import (
 	"sync"
 )
 
-func handleConnection(client net.Conn) {
-	defer client.Close()
+func handleConnection(clientConn *tls.Conn) {
+	defer clientConn.Close()
+
+	// handshake would be automatically done on first Read() or Write()
+	// call, but since we want access to PeerCertificates before we let
+	// bidi pipe do its thing, we call it manually here.
+	//
+	// this has the added benefit of not uselessly dialing Docker socket
+	// if on cases where handshake fails
+	if err := clientConn.Handshake(); err != nil {
+		log.Printf("handleConnection: handshake failed: %s", err.Error())
+		return
+	}
+
+	clientConnState := clientConn.ConnectionState()
+
+	if clientConnState.HandshakeComplete && len(clientConnState.PeerCertificates) == 1 {
+		cert := clientConn.ConnectionState().PeerCertificates[0]
+
+		log.Printf(
+			"handleConnection: %s connected (issuer %s)",
+			cert.Subject.CommonName,
+			cert.Issuer.CommonName)
+	} else {
+		log.Printf("handleConnection: unexpected situation; closing connection")
+		return
+	}
 
 	log.Printf("handleConnection: got Client; dialing Docker sock")
 
@@ -24,7 +49,7 @@ func handleConnection(client net.Conn) {
 	}
 	defer dockerSock.Close()
 
-	bidiPipe(client, "Client", dockerSock, "Docker")
+	bidiPipe(clientConn, "Client", dockerSock, "Docker")
 
 	log.Printf("handleConnection: closing")
 }
@@ -42,7 +67,7 @@ func mainInternal() error {
 
 	serverCert, err := tls.X509KeyPair([]byte(serverCert), serverCertKey)
 	if err != nil {
-		log.Fatalf("server: loadkeys: %s", err)
+		return err
 	}
 
 	tlsConfig := tls.Config{
@@ -60,7 +85,8 @@ func mainInternal() error {
 			return err
 			// handle error
 		}
-		go handleConnection(conn)
+
+		go handleConnection(conn.(*tls.Conn))
 	}
 
 	return nil
@@ -84,7 +110,7 @@ func bidiPipe(party1 io.ReadWriteCloser, party1Name string, party2 io.ReadWriteC
 
 		if errCopyToParty1 != nil {
 			log.Printf(
-				"handleConnection: %s -> %s error: %s",
+				"bidiPipe: %s -> %s error: %s",
 				party2Name,
 				party1Name,
 				errCopyToParty1.Error())
@@ -100,7 +126,7 @@ func bidiPipe(party1 io.ReadWriteCloser, party1Name string, party2 io.ReadWriteC
 
 		if errCopyToParty2 != nil {
 			log.Printf(
-				"handleConnection: %s -> %s error: %s",
+				"bidiPipe: %s -> %s error: %s",
 				party1Name,
 				party2Name,
 				errCopyToParty2.Error())
