@@ -20,7 +20,7 @@ func handleConnection(clientConn *tls.Conn) {
 	// bidi pipe do its thing, we call it manually here.
 	//
 	// this has the added benefit of not uselessly dialing Docker socket
-	// if on cases where handshake fails
+	// on cases where handshake fails
 	if err := clientConn.Handshake(); err != nil {
 		log.Printf("handleConnection: handshake failed: %s", err.Error())
 		return

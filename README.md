@@ -15,8 +15,18 @@ With this I can publish this proxy as a container and have total control over th
 Usage
 -----
 
-Deploy this container as a Swarm service (a bare container also will suffice), with ENV var: `SERVERCERT_KEY`. The content is base64 encoded version of `server.key` file.
+Deploy this container as a Swarm service (a bare container will also suffice), with ENV var: `SERVERCERT_KEY`.
+The content is base64 encoded version of `server.key` file.
+
+You probably need this as a Swarm service, if you have a multi-node cluster, because some
+apps need to connect to manager nodes (see placement contstraint).
 
 ```
-$ docker run -d --name dockersockproxy -v /var/run/docker.sock:/var/run/docker.sock -p 4431:4431 -e SERVERCERT_KEY=... fn61/dockersockproxy:20180926_1544_97ccec80
+$ docker service create \
+	--name dockersockproxy \
+	--constraint node.role==manager \
+	--publish 4431:4431 \
+	--env SERVERCERT_KEY=... \
+	--mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
+	fn61/dockersockproxy:version...
 ```
