@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 )
 
 func handleConnection(clientConn *tls.Conn) {
@@ -91,8 +92,9 @@ func mainInternal() error {
 	for {
 		conn, err := tcpTlsListener.Accept()
 		if err != nil {
-			return err
-			// handle error
+			log.Printf("Accept() error: %s", err.Error())
+			time.Sleep(1 * time.Second) // as not to go in a tight loop
+			continue
 		}
 
 		go handleConnection(conn.(*tls.Conn))
