@@ -54,13 +54,22 @@ func handleConnection(clientConn *tls.Conn) {
 	log.Printf("handleConnection: closing")
 }
 
-func mainInternal() error {
+func loadServerCertKeyFromEnv() ([]byte, error) {
 	serverCertKeyBase64 := os.Getenv("SERVERCERT_KEY")
 	if serverCertKeyBase64 == "" {
-		return errors.New("SERVERCERT_KEY not defined")
+		return nil, errors.New("SERVERCERT_KEY not defined")
 	}
 
 	serverCertKey, err := base64.StdEncoding.DecodeString(serverCertKeyBase64)
+	if err != nil {
+		return nil, err
+	}
+
+	return serverCertKey, nil
+}
+
+func mainInternal() error {
+	serverCertKey, err := loadServerCertKeyFromEnv()
 	if err != nil {
 		return err
 	}
