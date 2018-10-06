@@ -22,11 +22,14 @@ You probably need this as a Swarm service, if you have a multi-node cluster, bec
 apps need to connect to manager nodes (see placement contstraint).
 
 ```
+$ SERVERCERT_KEY="..."
+$ DOCKERSOCKPROXY_VERSION="..."
 $ docker service create \
 	--name dockersockproxy \
 	--constraint node.role==manager \
 	--publish 4431:4431 \
-	--env SERVERCERT_KEY=... \
+	--env "SERVERCERT_KEY=$SERVERCERT_KEY" \
 	--mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
-	fn61/dockersockproxy:version...
+	--network fn61 \
+	"fn61/dockersockproxy:$DOCKERSOCKPROXY_VERSION"
 ```
