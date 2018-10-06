@@ -97,8 +97,6 @@ func mainInternal() error {
 
 		go handleConnection(conn.(*tls.Conn))
 	}
-
-	return nil
 }
 
 func main() {
