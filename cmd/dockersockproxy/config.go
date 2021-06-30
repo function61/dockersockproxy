@@ -1,5 +1,9 @@
 package main
 
+import (
+	"crypto/x509"
+)
+
 const (
 	addr           = "0.0.0.0:4431"
 	dockerSockPath = "/var/run/docker.sock"
@@ -37,3 +41,9 @@ HqqCckE=
 -----END CERTIFICATE-----
 `
 )
+
+func getCaCert() *x509.CertPool {
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM([]byte(caCert))
+	return caCertPool
+}

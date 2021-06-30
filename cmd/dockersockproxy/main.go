@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"log"
 	"net"
 	"time"
@@ -92,10 +91,4 @@ func logic() error {
 
 		go handleConnection(conn.(*tls.Conn))
 	}
-}
-
-func getCaCert() *x509.CertPool {
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM([]byte(caCert))
-	return caCertPool
 }
