@@ -14,6 +14,41 @@ func main() {
 	osutil.ExitIfError(logic())
 }
 
+func logic() error {
+	serverCertKey, err := osutil.GetenvRequiredFromBase64("SERVERCERT_KEY")
+	if err != nil {
+		return err
+	}
+
+	serverCert, err := tls.X509KeyPair([]byte(serverCert), serverCertKey)
+	if err != nil {
+		return err
+	}
+
+	tlsConfig := tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    getCaCert(),
+	}
+
+	log.Printf("Starting to listen on %s", addr)
+	tcpTlsListener, err := tls.Listen("tcp", addr, &tlsConfig)
+	if err != nil {
+		return err
+	}
+
+	for {
+		conn, err := tcpTlsListener.Accept()
+		if err != nil {
+			log.Printf("Accept() error: %s", err.Error())
+			time.Sleep(1 * time.Second) // as not to go in a tight loop
+			continue
+		}
+
+		go handleConnection(conn.(*tls.Conn))
+	}
+}
+
 func handleConnection(clientConn *tls.Conn) {
 	defer clientConn.Close()
 
@@ -56,39 +91,4 @@ func handleConnection(clientConn *tls.Conn) {
 	}
 
 	log.Println("handleConnection: closing")
-}
-
-func logic() error {
-	serverCertKey, err := osutil.GetenvRequiredFromBase64("SERVERCERT_KEY")
-	if err != nil {
-		return err
-	}
-
-	serverCert, err := tls.X509KeyPair([]byte(serverCert), serverCertKey)
-	if err != nil {
-		return err
-	}
-
-	tlsConfig := tls.Config{
-		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    getCaCert(),
-	}
-
-	log.Printf("Starting to listen on %s", addr)
-	tcpTlsListener, err := tls.Listen("tcp", addr, &tlsConfig)
-	if err != nil {
-		return err
-	}
-
-	for {
-		conn, err := tcpTlsListener.Accept()
-		if err != nil {
-			log.Printf("Accept() error: %s", err.Error())
-			time.Sleep(1 * time.Second) // as not to go in a tight loop
-			continue
-		}
-
-		go handleConnection(conn.(*tls.Conn))
-	}
 }
