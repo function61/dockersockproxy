@@ -1,5 +1,6 @@
-[![Build Status](https://img.shields.io/travis/function61/dockersockproxy.svg?style=for-the-badge)](https://travis-ci.org/function61/dockersockproxy)
-[![Download](https://img.shields.io/docker/pulls/fn61/dockersockproxy.svg?style=for-the-badge)](https://hub.docker.com/r/fn61/dockersockproxy/)
+![Build status](https://github.com/function61/dockersockproxy/workflows/Build/badge.svg)
+[![Docker pulls](https://img.shields.io/docker/fn61/dockersockproxy/workrecorder.svg?style=for-the-badge)](https://hub.docker.com/r/fn61/dockersockproxy/)
+
 
 What?
 -----
