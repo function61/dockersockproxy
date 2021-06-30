@@ -3,11 +3,8 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
-	"errors"
 	"log"
 	"net"
-	"os"
 	"time"
 
 	"github.com/function61/gokit/io/bidipipe"
@@ -62,22 +59,8 @@ func handleConnection(clientConn *tls.Conn) {
 	log.Println("handleConnection: closing")
 }
 
-func loadServerCertKeyFromEnv() ([]byte, error) {
-	serverCertKeyBase64 := os.Getenv("SERVERCERT_KEY")
-	if serverCertKeyBase64 == "" {
-		return nil, errors.New("SERVERCERT_KEY not defined")
-	}
-
-	serverCertKey, err := base64.StdEncoding.DecodeString(serverCertKeyBase64)
-	if err != nil {
-		return nil, err
-	}
-
-	return serverCertKey, nil
-}
-
 func logic() error {
-	serverCertKey, err := loadServerCertKeyFromEnv()
+	serverCertKey, err := osutil.GetenvRequiredFromBase64("SERVERCERT_KEY")
 	if err != nil {
 		return err
 	}
