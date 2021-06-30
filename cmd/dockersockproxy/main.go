@@ -11,7 +11,13 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"github.com/function61/gokit/os/osutil"
 )
+
+func main() {
+	osutil.ExitIfError(logic())
+}
 
 func handleConnection(clientConn *tls.Conn) {
 	defer clientConn.Close()
@@ -69,7 +75,7 @@ func loadServerCertKeyFromEnv() ([]byte, error) {
 	return serverCertKey, nil
 }
 
-func mainInternal() error {
+func logic() error {
 	serverCertKey, err := loadServerCertKeyFromEnv()
 	if err != nil {
 		return err
@@ -98,12 +104,6 @@ func mainInternal() error {
 		}
 
 		go handleConnection(conn.(*tls.Conn))
-	}
-}
-
-func main() {
-	if err := mainInternal(); err != nil {
-		panic(err)
 	}
 }
 
