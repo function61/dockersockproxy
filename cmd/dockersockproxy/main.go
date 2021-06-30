@@ -5,15 +5,28 @@ import (
 	"crypto/tls"
 	"log"
 	"net"
+	"os"
 
+	"github.com/function61/gokit/app/dynversion"
 	"github.com/function61/gokit/io/bidipipe"
 	"github.com/function61/gokit/net/netutil"
 	"github.com/function61/gokit/os/osutil"
+	"github.com/spf13/cobra"
 )
 
 func main() {
-	osutil.ExitIfError(logic(
-		osutil.CancelOnInterruptOrTerminate(nil)))
+	app := &cobra.Command{
+		Use:     os.Args[0],
+		Short:   "Proxies Docker's socket over TLS",
+		Version: dynversion.Version,
+		Args:    cobra.NoArgs,
+		Run: func(_ *cobra.Command, _ []string) {
+			osutil.ExitIfError(logic(
+				osutil.CancelOnInterruptOrTerminate(nil)))
+		},
+	}
+
+	osutil.ExitIfError(app.Execute())
 }
 
 func logic(ctx context.Context) error {
