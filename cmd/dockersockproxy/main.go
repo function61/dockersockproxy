@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	addr := "0.0.0.0"
+	addr := "0.0.0.0:4431"
 
 	app := &cobra.Command{
 		Use:     os.Args[0],
@@ -32,12 +32,12 @@ func main() {
 		},
 	}
 
-	app.Flags().StringVarP(&addr, "addr", "", addr, "Use 100.64.0.0/10 for CGNAT space (used also by Tailscale)")
+	app.Flags().StringVarP(&addr, "addr", "", addr, "Use 100.64.0.0/10:4431 for CGNAT space (used also by Tailscale)")
 
 	osutil.ExitIfError(app.Execute())
 }
 
-func logic(ctx context.Context, addrOrPrefix string) error {
+func logic(ctx context.Context, addrOrPrefixWithPort string) error {
 	serverCertKey, err := osutil.GetenvRequiredFromBase64("SERVERCERT_KEY")
 	if err != nil {
 		return err
@@ -54,19 +54,24 @@ func logic(ctx context.Context, addrOrPrefix string) error {
 		ClientCAs:    getCaCert(),
 	}
 
-	addr, err := addrFromAddrOrPrefix(addrOrPrefix)
+	addrOrPrefix, port, err := net.SplitHostPort(addrOrPrefixWithPort)
 	if err != nil {
 		return err
 	}
 
-	addrAndport := addr + ":4431"
-
-	tcpTlsListener, err := tls.Listen("tcp", addrAndport, &tlsConfig)
+	host, err := addrFromAddrOrPrefix(addrOrPrefix)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Listening on %s", addrAndport)
+	hostAndPort := net.JoinHostPort(host, port)
+
+	tcpTlsListener, err := tls.Listen("tcp", hostAndPort, &tlsConfig)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Listening on %s", hostAndPort)
 
 	return netutil.CancelableServe(ctx, tcpTlsListener, func(conn net.Conn) {
 		handleConnection(conn.(*tls.Conn))
