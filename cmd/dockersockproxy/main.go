@@ -94,6 +94,9 @@ func logic() error {
 
 	log.Printf("Starting to listen on %s", addr)
 	tcpTlsListener, err := tls.Listen("tcp", addr, &tlsConfig)
+	if err != nil {
+		return err
+	}
 
 	for {
 		conn, err := tcpTlsListener.Accept()
