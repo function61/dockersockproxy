@@ -2,7 +2,7 @@
 
 source /build-common.sh
 
-BINARY_NAME="dockersockproxy"
 COMPILE_IN_DIRECTORY="cmd/dockersockproxy"
+BINARY_NAME="dockersockproxy"
 
 standardBuildProcess
