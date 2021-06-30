@@ -5,13 +5,12 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"errors"
-	"io"
 	"log"
 	"net"
 	"os"
-	"sync"
 	"time"
 
+	"github.com/function61/gokit/io/bidipipe"
 	"github.com/function61/gokit/os/osutil"
 )
 
@@ -43,7 +42,7 @@ func handleConnection(clientConn *tls.Conn) {
 			cert.Subject.CommonName,
 			cert.Issuer.CommonName)
 	} else {
-		log.Printf("handleConnection: unexpected situation; closing connection")
+		log.Println("handleConnection: unexpected situation; closing connection")
 		return
 	}
 
@@ -54,11 +53,13 @@ func handleConnection(clientConn *tls.Conn) {
 		log.Printf("handleConnection: Docker sock dial failed: %s", err.Error())
 		return
 	}
-	defer dockerSock.Close()
 
-	bidiPipe(clientConn, "Client", dockerSock, "Docker")
+	// by contract closes both sockets
+	if err := bidipipe.Pipe(bidipipe.WithName("Client", clientConn), bidipipe.WithName("Docker", dockerSock)); err != nil {
+		log.Println(err.Error())
+	}
 
-	log.Printf("handleConnection: closing")
+	log.Println("handleConnection: closing")
 }
 
 func loadServerCertKeyFromEnv() ([]byte, error) {
@@ -110,51 +111,8 @@ func logic() error {
 	}
 }
 
-func bidiPipe(party1 io.ReadWriteCloser, party1Name string, party2 io.ReadWriteCloser, party2Name string) {
-	allIoFinished := &sync.WaitGroup{}
-
-	go func(done *sync.WaitGroup) {
-		defer done.Done()
-
-		_, errCopyToParty1 := io.Copy(party1, party2)
-
-		party1.Close()
-
-		if errCopyToParty1 != nil {
-			log.Printf(
-				"bidiPipe: %s -> %s error: %s",
-				party2Name,
-				party1Name,
-				errCopyToParty1.Error())
-		}
-	}(waiterReference(allIoFinished))
-
-	go func(done *sync.WaitGroup) {
-		defer done.Done()
-
-		_, errCopyToParty2 := io.Copy(party2, party1)
-
-		party2.Close()
-
-		if errCopyToParty2 != nil {
-			log.Printf(
-				"bidiPipe: %s -> %s error: %s",
-				party1Name,
-				party2Name,
-				errCopyToParty2.Error())
-		}
-	}(waiterReference(allIoFinished))
-
-	allIoFinished.Wait()
-}
-
 func getCaCert() *x509.CertPool {
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM([]byte(caCert))
 	return caCertPool
-}
-
-func waiterReference(wg *sync.WaitGroup) *sync.WaitGroup {
-	wg.Add(1)
-	return wg
 }
