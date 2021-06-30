@@ -5,7 +5,6 @@ import (
 )
 
 const (
-	addr           = "0.0.0.0:4431"
 	dockerSockPath = "/var/run/docker.sock"
 	caCert         = `-----BEGIN CERTIFICATE-----
 MIIB7DCCAZKgAwIBAgIUOXV3p6K9GQtjhnOn9Efe91IuUzcwCgYIKoZIzj0EAwIw

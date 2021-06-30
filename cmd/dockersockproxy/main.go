@@ -3,18 +3,23 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/function61/gokit/app/dynversion"
 	"github.com/function61/gokit/io/bidipipe"
 	"github.com/function61/gokit/net/netutil"
 	"github.com/function61/gokit/os/osutil"
 	"github.com/spf13/cobra"
+	"inet.af/netaddr"
 )
 
 func main() {
+	addr := "0.0.0.0"
+
 	app := &cobra.Command{
 		Use:     os.Args[0],
 		Short:   "Proxies Docker's socket over TLS",
@@ -22,14 +27,17 @@ func main() {
 		Args:    cobra.NoArgs,
 		Run: func(_ *cobra.Command, _ []string) {
 			osutil.ExitIfError(logic(
-				osutil.CancelOnInterruptOrTerminate(nil)))
+				osutil.CancelOnInterruptOrTerminate(nil),
+				addr))
 		},
 	}
+
+	app.Flags().StringVarP(&addr, "addr", "", addr, "Use 100.64.0.0/10 for CGNAT space (used also by Tailscale)")
 
 	osutil.ExitIfError(app.Execute())
 }
 
-func logic(ctx context.Context) error {
+func logic(ctx context.Context, addrOrPrefix string) error {
 	serverCertKey, err := osutil.GetenvRequiredFromBase64("SERVERCERT_KEY")
 	if err != nil {
 		return err
@@ -46,12 +54,19 @@ func logic(ctx context.Context) error {
 		ClientCAs:    getCaCert(),
 	}
 
-	tcpTlsListener, err := tls.Listen("tcp", addr, &tlsConfig)
+	addr, err := addrFromAddrOrPrefix(addrOrPrefix)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Listening on %s", addr)
+	addrAndport := addr + ":4431"
+
+	tcpTlsListener, err := tls.Listen("tcp", addrAndport, &tlsConfig)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Listening on %s", addrAndport)
 
 	return netutil.CancelableServe(ctx, tcpTlsListener, func(conn net.Conn) {
 		handleConnection(conn.(*tls.Conn))
@@ -100,4 +115,37 @@ func handleConnection(clientConn *tls.Conn) {
 	}
 
 	log.Println("handleConnection: closing")
+}
+
+// "0.0.0.0", "127.0.0.1" are returned as-is but prefixes like "100.64.0.0/10" are matched against
+// local interface addresses to find a matching IP to bind to (e.g. say you want to bind to a VPN IP)
+func addrFromAddrOrPrefix(addrOrPrefix string) (string, error) {
+	if strings.Contains(addrOrPrefix, "/") { // looks like prefix
+		ipPrefix, err := netaddr.ParseIPPrefix(addrOrPrefix)
+		if err != nil {
+			return "", err
+		}
+
+		addrs, err := net.InterfaceAddrs()
+		if err != nil {
+			return "", err
+		}
+
+		for _, addr := range addrs {
+			if ipNet, is := addr.(*net.IPNet); is {
+				ip, ok := netaddr.FromStdIP(ipNet.IP)
+				if !ok { // shouldn't happen
+					return "", fmt.Errorf("FromStdIP error: %v", ipNet.IP)
+				}
+
+				if ipPrefix.Contains(ip) {
+					return ip.String(), nil
+				}
+			}
+		}
+
+		return "", fmt.Errorf("none of the interfaces have address for prefix %s", addrOrPrefix)
+	} else {
+		return addrOrPrefix, nil // is addr directly
+	}
 }
