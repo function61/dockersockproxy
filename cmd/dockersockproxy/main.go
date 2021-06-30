@@ -1,20 +1,22 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"log"
 	"net"
-	"time"
 
 	"github.com/function61/gokit/io/bidipipe"
+	"github.com/function61/gokit/net/netutil"
 	"github.com/function61/gokit/os/osutil"
 )
 
 func main() {
-	osutil.ExitIfError(logic())
+	osutil.ExitIfError(logic(
+		osutil.CancelOnInterruptOrTerminate(nil)))
 }
 
-func logic() error {
+func logic(ctx context.Context) error {
 	serverCertKey, err := osutil.GetenvRequiredFromBase64("SERVERCERT_KEY")
 	if err != nil {
 		return err
@@ -31,22 +33,16 @@ func logic() error {
 		ClientCAs:    getCaCert(),
 	}
 
-	log.Printf("Starting to listen on %s", addr)
 	tcpTlsListener, err := tls.Listen("tcp", addr, &tlsConfig)
 	if err != nil {
 		return err
 	}
 
-	for {
-		conn, err := tcpTlsListener.Accept()
-		if err != nil {
-			log.Printf("Accept() error: %s", err.Error())
-			time.Sleep(1 * time.Second) // as not to go in a tight loop
-			continue
-		}
+	log.Printf("Listening on %s", addr)
 
-		go handleConnection(conn.(*tls.Conn))
-	}
+	return netutil.CancelableServe(ctx, tcpTlsListener, func(conn net.Conn) {
+		handleConnection(conn.(*tls.Conn))
+	})
 }
 
 func handleConnection(clientConn *tls.Conn) {
