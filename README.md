@@ -34,3 +34,15 @@ $ docker service create \
 	--network fn61 \
 	"fn61/dockersockproxy:$DOCKERSOCKPROXY_VERSION"
 ```
+
+
+Binding only to VPN interface (e.g. Tailscale)
+----------------------------------------------
+
+[Tailscale uses CGNAT IP prefix](https://tailscale.com/kb/1015/100.x-addresses/), i.e. `100.64.0.0/10`.
+
+If you want to only listen on that interface, you can run the container with `--addr=100.64.0.0/10:4431`
+(of course you can change port if you want). We'll pick the first matching interface with matching
+IP assigned from the prefix you specified.
+
+NOTE: In this case you're likely needing to use host network namespace with `$ docker run ...`.
