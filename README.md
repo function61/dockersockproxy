@@ -1,5 +1,5 @@
 ![Build status](https://github.com/function61/dockersockproxy/workflows/Build/badge.svg)
-[![Docker pulls](https://img.shields.io/docker/fn61/dockersockproxy/workrecorder.svg?style=for-the-badge)](https://hub.docker.com/r/fn61/dockersockproxy/)
+[![Docker pulls](https://img.shields.io/docker/pulls/fn61/dockersockproxy.svg?style=for-the-badge)](https://hub.docker.com/r/fn61/dockersockproxy/)
 
 
 What?
