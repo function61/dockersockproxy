@@ -26,9 +26,16 @@ func main() {
 		Version: dynversion.Version,
 		Args:    cobra.NoArgs,
 		Run: func(_ *cobra.Command, _ []string) {
-			osutil.ExitIfError(logic(
-				osutil.CancelOnInterruptOrTerminate(nil),
-				addr))
+			osutil.ExitIfError(func() error {
+				hostAndPort, err := translateAddrOrPrefixWithPort(addr)
+				if err != nil {
+					return err
+				}
+
+				return listenAndServe(
+					osutil.CancelOnInterruptOrTerminate(nil),
+					hostAndPort)
+			}())
 		},
 	}
 
@@ -37,7 +44,7 @@ func main() {
 	osutil.ExitIfError(app.Execute())
 }
 
-func logic(ctx context.Context, addrOrPrefixWithPort string) error {
+func listenAndServe(ctx context.Context, hostAndPort string) error {
 	serverCertKey, err := osutil.GetenvRequiredFromBase64("SERVERCERT_KEY")
 	if err != nil {
 		return err
@@ -48,25 +55,11 @@ func logic(ctx context.Context, addrOrPrefixWithPort string) error {
 		return err
 	}
 
-	tlsConfig := tls.Config{
+	tcpTlsListener, err := tls.Listen("tcp", hostAndPort, &tls.Config{
 		Certificates: []tls.Certificate{serverCert},
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    getCaCert(),
-	}
-
-	addrOrPrefix, port, err := net.SplitHostPort(addrOrPrefixWithPort)
-	if err != nil {
-		return err
-	}
-
-	host, err := addrFromAddrOrPrefix(addrOrPrefix)
-	if err != nil {
-		return err
-	}
-
-	hostAndPort := net.JoinHostPort(host, port)
-
-	tcpTlsListener, err := tls.Listen("tcp", hostAndPort, &tlsConfig)
+	})
 	if err != nil {
 		return err
 	}
@@ -120,6 +113,22 @@ func handleConnection(clientConn *tls.Conn) {
 	}
 
 	log.Println("handleConnection: closing")
+}
+
+// "0.0.0.0:4331" => "0.0.0.0:4331"
+// "100.64.0.0/10:4331" => "100.100.1.2:4331" (depending on host's assigned IP addresses)
+func translateAddrOrPrefixWithPort(addrOrPrefixWithPort string) (string, error) {
+	addrOrPrefix, port, err := net.SplitHostPort(addrOrPrefixWithPort)
+	if err != nil {
+		return "", err
+	}
+
+	host, err := addrFromAddrOrPrefix(addrOrPrefix)
+	if err != nil {
+		return "", err
+	}
+
+	return net.JoinHostPort(host, port), nil
 }
 
 // "0.0.0.0", "127.0.0.1" are returned as-is but prefixes like "100.64.0.0/10" are matched against
