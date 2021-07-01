@@ -45,4 +45,4 @@ If you want to only listen on that interface, you can run the container with `--
 (of course you can change port if you want). We'll pick the first matching interface with matching
 IP assigned from the prefix you specified.
 
-NOTE: In this case you're likely needing to use host network namespace with `$ docker run ...`.
+NOTE: In this case you're likely needing to use host network namespace (and remove port mapping) with `$ docker run ...`.
